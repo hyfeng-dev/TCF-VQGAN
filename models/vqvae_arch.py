@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 
-from .modules import Normalize, nonlinearity, SEGateBlock, DCTGateBlock, DCTResnetBlock, GBC, SEResnetBlock, GateBlock, ResnetBlock
+from .modules import Normalize, nonlinearity, SEGateBlock, DCTGateBlock, DCTResnetBlock, SEResnetBlock
 
 
 class VectorQuantizer(nn.Module):
@@ -162,14 +162,6 @@ class ConvBlock(nn.Module):
         temb_channels=512
     ):
         super().__init__()      
-        # self.block = GateBlock(
-        #     in_channels=in_channels,
-        #     out_channels=out_channels,
-        #     conv_shortcut=conv_shorcut,
-        #     dropout=dropout,
-        #     temb_channels=temb_channels
-        # )
-  
         self.block = SEGateBlock(
             in_channels=in_channels,
             out_channels=out_channels,
@@ -177,33 +169,6 @@ class ConvBlock(nn.Module):
             dropout=dropout,
             temb_channels=temb_channels,
         )
-        
-        # self.block = DCTGateBlock(
-        #     in_channels=in_channels,
-        #     out_channels=out_channels,
-        #     conv_shortcut=conv_shorcut,
-        #     dropout=dropout,
-        #     temb_channels=temb_channels,
-        # )
-
-        # self.block = ResnetBlock(in_channels=in_channels,
-        #                     out_channels=out_channels,
-        #                     conv_shortcut=conv_shorcut,
-        #                     dropout=dropout,
-        #                     temb_channels=temb_channels)
-
-        # self.block = DCTResnetBlock(in_channels=in_channels,
-        #                     out_channels=out_channels,
-        #                     conv_shortcut=conv_shorcut,
-        #                     dropout=dropout,
-        #                     temb_channels=temb_channels)
-
-        # self.block = SEResnetBlock(in_channels=in_channels,
-        #                     out_channels=out_channels,
-        #                     conv_shortcut=conv_shorcut,
-        #                     dropout=dropout,
-        #                     temb_channels=temb_channels)      
-        
     def forward(self, x, temb):
         h = self.block(x, temb)
         return h

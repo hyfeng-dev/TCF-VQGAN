@@ -145,75 +145,6 @@ class MultiSpectralDCTLayer(nn.Module):
                         
         return dct_filter
 
-
-class GateBlock(nn.Module):
-    def __init__(
-        self,
-        *,
-        in_channels,
-        out_channels,
-        conv_shortcut=False,
-        dropout,
-        temb_channels=512
-    ):
-        super().__init__()
-        self.in_channels = in_channels
-        out_channels = out_channels if out_channels is not None else in_channels
-        self.out_channels = out_channels
-        self.use_conv_shortcut = conv_shortcut
-
-        self.norm1 = Normalize(in_channels)
-        self.nonlinearity1 = nn.SiLU()
-        self.conv = nn.Conv2d(
-            in_channels, out_channels, kernel_size=3, stride=1, padding=1
-        )
-
-        if temb_channels > 0:
-            self.temb_proj = torch.nn.Linear(temb_channels, out_channels)
-
-        self.norm2 = Normalize(out_channels)
-        self.nonlinearity2 = nn.SiLU()
-        self.dropout = nn.Dropout(dropout)
-        self.gate_conv = nn.Conv2d(
-            out_channels, out_channels * 2, kernel_size=3, stride=1, padding=1
-        )
-
-        if self.in_channels != self.out_channels:
-            if self.use_conv_shortcut:
-                self.conv_shortcut = nn.Conv2d(
-                    in_channels, out_channels, kernel_size=3, stride=1, padding=1
-                )
-            else:
-                self.nin_shortcut = nn.Conv2d(
-                    in_channels, out_channels, kernel_size=1, stride=1, padding=0
-                )
-
-    def forward(self, x, temb=None):
-        h = x
-        h = self.norm1(h)
-        h = self.nonlinearity1(h)
-        h = self.conv(h)
-
-        if temb is not None:
-            h = h + self.temb_proj(nonlinearity(temb))[:, :, None, None]
-
-        h = self.norm2(h)
-        h = self.nonlinearity2(h)
-        h = self.dropout(h)
-
-        h = self.gate_conv(h)
-        h1, h2 = h.chunk(2, dim=1)
-        h = F.sigmoid(h1) * F.relu(h2)
-
-        if self.in_channels != self.out_channels:
-            if self.use_conv_shortcut:
-                x = self.conv_shortcut(x)
-            else:
-                x = self.nin_shortcut(x)
-
-        return h + x
-    
-    
 class SEGateBlock(nn.Module):
     def __init__(
         self,
@@ -286,7 +217,6 @@ class SEGateBlock(nn.Module):
                 x = self.nin_shortcut(x)
 
         return h + x
-    
     
 class DCTGateBlock(nn.Module):
     def __init__(
@@ -364,65 +294,6 @@ class DCTGateBlock(nn.Module):
 
         return h + x
 
-
-class ResnetBlock(nn.Module):
-    def __init__(
-        self,
-        *,
-        in_channels,
-        out_channels=None,
-        conv_shortcut=False,
-        dropout,
-        temb_channels=512
-    ):
-        super().__init__()
-        self.in_channels = in_channels
-
-        out_channels = in_channels if out_channels is None else out_channels
-        self.out_channels = out_channels
-        self.use_conv_shortcut = conv_shortcut
-
-        self.norm1 = Normalize(in_channels)
-        self.conv1 = torch.nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1)
-        if temb_channels > 0:
-            self.temb_proj = torch.nn.Linear(temb_channels, out_channels)
-        self.norm2 = Normalize(out_channels)
-        self.dropout = torch.nn.Dropout(dropout)
-        self.conv2 = torch.nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
- 
-        if self.in_channels != self.out_channels:
-            if self.use_conv_shortcut:
-                self.conv_shortcut = torch.nn.Conv2d(
-                    in_channels, out_channels, kernel_size=3, stride=1, padding=1
-                )
-            else:
-                self.nin_shortcut = torch.nn.Conv2d(
-                    in_channels, out_channels, kernel_size=1, stride=1, padding=0
-                )
-
-    def forward(self, x, temb):
-        h = x
-        h = self.norm1(h)
-        h = nonlinearity(h)
-        h = self.conv1(h)
-
-        if temb is not None:
-            h = h + self.temb_proj(nonlinearity(temb))[:, :, None, None]
-
-        h = self.norm2(h)
-        h = nonlinearity(h)
-        h = self.dropout(h)
-        h = self.conv2(h)
-
-        if self.in_channels != self.out_channels:
-            if self.use_conv_shortcut:
-                x = self.conv_shortcut(x)
-            else:
-                x = self.nin_shortcut(x)
-
-        return x + h
-    
-    
 class DCTResnetBlock(nn.Module):
     def __init__(
         self,
@@ -490,7 +361,6 @@ class DCTResnetBlock(nn.Module):
                 x = self.nin_shortcut(x)
 
         return x + h
-    
     
 class SEResnetBlock(nn.Module):
     def __init__(
@@ -565,106 +435,3 @@ class SEResnetBlock(nn.Module):
                 x = self.nin_shortcut(x)
 
         return x + h
-    
-    
-class BottConv(nn.Module):
-    def __init__(self, in_channels, out_channels, mid_channels, kernel_size, stride=1, padding=0, bias=True):
-        super(BottConv, self).__init__()
-        self.pointwise_1 = nn.Conv2d(in_channels, mid_channels, 1, bias=bias)
-        self.depthwise = nn.Conv2d(mid_channels, mid_channels, kernel_size, stride, padding, groups=mid_channels, bias=False)
-        self.pointwise_2 = nn.Conv2d(mid_channels, out_channels, 1, bias=False)
-
-    def forward(self, x):
-        x = self.pointwise_1(x)
-        x = self.depthwise(x)
-        x = self.pointwise_2(x)
-        return x
-
-
-def get_norm_layer(norm_type, channels, num_groups):
-    if norm_type == 'GN':
-        return nn.GroupNorm(num_groups=num_groups, num_channels=channels)
-    else:
-        return nn.InstanceNorm3d(channels)
-
-
-class GBC(nn.Module):    
-    def __init__(
-        self,
-        *,
-        in_channels,
-        out_channels=None,
-        conv_shortcut=False,
-        dropout,
-        temb_channels=512
-    ):
-        super(GBC, self).__init__()
-        
-        c2wh = dict([(128, 256), (256, 128), (512, 64), (768, 32)])
-        
-        self.in_channels = in_channels
-        self.out_channels = out_channels if out_channels is not None else in_channels
-        self.use_conv_shortcut = conv_shortcut
-
-        self.block1 = nn.Sequential(
-            BottConv(in_channels, out_channels, in_channels // 8, 3, 1, 1),
-            Normalize(out_channels),
-            nn.ReLU()
-        )
-
-        self.block2 = nn.Sequential(
-            BottConv(out_channels, out_channels, out_channels // 8, 3, 1, 1),
-            Normalize(out_channels),
-            nn.ReLU()
-        )
-
-        self.block3 = nn.Sequential(
-            BottConv(in_channels, out_channels, in_channels // 8, 1, 1, 0),
-            Normalize(out_channels),
-            nn.ReLU()
-        )
-
-        self.block4 = nn.Sequential(
-            BottConv(out_channels, out_channels, out_channels // 8, 1, 1, 0),
-            Normalize(out_channels),
-            nn.ReLU()
-        )
-        
-        self.att = MultiSpectralAttentionLayer(
-            out_channels, c2wh[out_channels], c2wh[out_channels], reduction=16, freq_sel_method='top16'
-        )
-        
-        if self.in_channels != self.out_channels:
-            if self.use_conv_shortcut:
-                self.conv_shortcut = torch.nn.Conv2d(
-                    in_channels, out_channels, kernel_size=3, stride=1, padding=1
-                )
-            else:
-                self.nin_shortcut = torch.nn.Conv2d(
-                    in_channels, out_channels, kernel_size=1, stride=1, padding=0
-                )
-
-    def forward(self, x, temb=None):
-        residual = x
-
-        x1 = self.block1(x)
-        x1 = self.block2(x1)
-        x2 = self.block3(x)
-        x = x1 * x2
-        x = self.block4(x)
-        x = self.att(x)
-        
-        if self.in_channels != self.out_channels:
-            if self.use_conv_shortcut:
-                residual = self.conv_shortcut(residual)
-            else:
-                residual = self.nin_shortcut(residual)
-
-        return x + residual
-    
-    
-if __name__ == "__main__":
-    x = torch.randn(1, 64, 128, 128)
-    block = GBC(in_channels=64, out_channels=64, conv_shortcut=False, dropout=0)
-    print(block(x, None).shape)
-    
