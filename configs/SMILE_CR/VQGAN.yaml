@@ -1,0 +1,85 @@
+model: 
+  target: models.vqgan_v1.TCFVQGAN
+  params:
+    base_learning_rate: 1e-4
+    ckpt_path: logs\opt_modis\HQD\version_0\148-30.9684.ckpt
+    ignore_keys: 
+      - loss
+    special_params_lr_scale: 10
+    ddconfig:
+      target: models.vqvae_arch.VQVAEGANMultiHeadTransformer
+      params:
+        embed_dim: 512
+        n_embed: 1024
+        double_z: False
+        z_channels: 512
+        resolution: 256
+        in_channels: 14 # 2 + 6 + 6
+        out_ch: 6
+        ch: 64
+        ch_mult: [1, 2, 4, 6] # num_down = len(ch_mult)-1
+        num_res_blocks: 2
+        dropout: 0.
+        attn_resolutions: [32]
+        enable_mid: True
+        fix_decoder: False
+        fix_codebook: False
+        fix_encoder: False
+        head_size: 4
+        ex_multi_scale_num: 0
+        quantize_type: "ema"
+
+    lossconfig:
+      target: losses.loss.L1_SSIM_DW2A_Discriminator
+      params:
+        disc_conditional: False
+        disc_in_channels: 6
+        disc_start: 0
+        disc_weight: 0.8
+        codebook_weight: 1.0
+        use_actnorm: False
+        addition_loss: ["2dwt", "ssim"]
+        addition_loss_weight: [1., 1.]
+
+data:
+  target: main.PlDataModule
+  params:
+    train:
+      batch_size: 1
+      num_workers: 1
+      target: data.datasets.SMILE_CR
+      params:
+        path: PATH_TO_DATASET/SMILE-CR/TrainData
+        aug: True
+        for_codebook: False
+
+    val:
+      batch_size: 1
+      num_workers: 1
+      target: data.datasets.SMILE_CR
+      params:
+        path: PATH_TO_DATASET/SMILE-CR/ValData
+        aug: False
+        for_codebook: False
+
+    test:
+      batch_size: 1
+      num_workers: 1
+      target: data.datasets.SMILE_CR
+      params:
+        path: PATH_TO_DATASET/SMILE-CR/TestData
+        aug: False
+        for_codebook: False
+
+logger:
+  target: pytorch_lightning.loggers.TensorBoardLogger
+  params:
+    save_dir: logs/smile_cr
+    name: VQGAN
+
+lightning:
+  trainer:
+    max_epochs: 150
+    accelerator: "gpu"
+    devices: 1
+    enable_progress_bar: true

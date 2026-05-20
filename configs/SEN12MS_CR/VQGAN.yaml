@@ -1,0 +1,84 @@
+model: 
+  target: models.vqgan_v1.TCFVQGAN
+  params:
+    base_learning_rate: 3e-5
+    # ENTER THE PATH TO THE STAGE I CHECKPOINT(belike logs/HQD/version_0/148-30.9684.ckpt)
+    ckpt_path: "CHECKPOINT_PATH"
+    # ignore_keys:
+    #   - loss
+    special_params_lr_scale: 10
+    ddconfig:
+      target: models.vqvae_arch.VQVAEGANMultiHeadTransformer
+      params:
+        embed_dim: 512
+        n_embed: 1024
+        double_z: False
+        z_channels: 512
+        resolution: 256
+        in_channels: 15
+        out_ch: 13
+        ch: 64
+        ch_mult: [1, 2, 4, 6] # num_down = len(ch_mult)-1
+        num_res_blocks: 2
+        dropout: 0.
+        attn_resolutions: [32]
+        enable_mid: True
+        fix_decoder: False
+        fix_encoder: False
+        head_size: 4
+        ex_multi_scale_num: 1
+        quantize_type: "ema"
+
+    lossconfig:
+      target: losses.loss.L1_SSIM_DW2A_Discriminator
+      params:
+        disc_conditional: False
+        disc_in_channels: 13
+        disc_start: 0
+        disc_weight: 0.8
+        codebook_weight: 1.0
+        addition_loss: ["2dwt", "ssim"]
+        addition_loss_weight: [1., 1.]
+
+data:
+  target: main.PlDataModule
+  params:
+    train:
+      batch_size: 1
+      num_workers: 8
+      target: data.datasets.SEN12MS_CR
+      params:
+        path: PATH_TO_DATASET/SEN12MS-CR-5K/train
+        aug: True
+        for_codebook: False
+
+    val:
+      batch_size: 1
+      num_workers: 8
+      target: data.datasets.SEN12MS_CR
+      params:
+        path: PATH_TO_DATASET/SEN12MS-CR-5K/val
+        aug: False
+        for_codebook: False
+
+    test:
+      batch_size: 1
+      num_workers: 8
+      target: data.datasets.SEN12MS_CR
+      params:
+        path: PATH_TO_DATASET/SEN12MS-CR-5K/test
+        aug: False
+        for_codebook: False
+
+logger:
+  target: pytorch_lightning.loggers.TensorBoardLogger
+  params:
+    save_dir: logs/sen12ms_cr
+    name: VQGAN
+
+lightning:
+  trainer:
+    max_epochs: 100
+    accelerator: "gpu"
+    devices: 1
+    enable_progress_bar: true 
