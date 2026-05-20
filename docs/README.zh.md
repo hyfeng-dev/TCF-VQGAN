@@ -4,7 +4,7 @@
 
 ### ⚙️ 环境安装
 
-建议先到 PyTorch 官网手动安装 `torch` 和 `torchvision`：https://pytorch.org/get-started/locally/。本文使用的环境版本为 `2.6.0+cu126`。完成 PyTorch 安装后，其余依赖可通过以下命令安装：
+建议先到 PyTorch 官网手动安装 `torch` 和 `torchvision`：[PyTorch Started](https://pytorch.org/get-started/locally/)。本文使用的环境版本为 `2.6.0+cu126`。完成 PyTorch 安装后，其余依赖可通过以下命令安装：
 
 ```bash
 pip install -r requirements.txt

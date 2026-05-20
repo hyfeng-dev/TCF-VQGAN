@@ -7,7 +7,7 @@
 
 ### ⚙️ Installation
 
-Install `torch` and `torchvision` following the official PyTorch instructions: https://pytorch.org/get-started/locally/. Install the remaining Python dependencies with:
+Install `torch` and `torchvision` following the official PyTorch instructions: [PyTorch Started](https://pytorch.org/get-started/locally/). Install the remaining Python dependencies with:
 
 ```bash
 pip install -r requirements.txt
