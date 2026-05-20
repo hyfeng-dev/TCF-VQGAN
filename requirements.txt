@@ -15,6 +15,6 @@ tensorboard
 lpips
 pytorch-msssim
 pytorch-wavelets
-huggingface_hub
+PyWavelets
 tqdm
 rich

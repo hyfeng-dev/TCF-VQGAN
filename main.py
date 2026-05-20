@@ -107,7 +107,7 @@ if __name__ == "__main__":
     
     torch.set_float32_matmul_precision('high')
     
-    config = OmegaConf.load("configs\SMILE_CR\VQGAN.yaml")
+    config = OmegaConf.load("configs\SMILE_CR\HQD.yaml")
     model_config, data_config, logger_config = config.model, config.data, config.logger
     model = instantiate_from_config(model_config)
     data = instantiate_from_config(data_config)
